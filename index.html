@@ -3,294 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SF Skyline Weather</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+  <title>SF Skyline</title>
   <style>
     :root {
-      --bg: #f4f6f9;
-      --card: #ffffff;
-      --text: #1b2330;
-      --muted: #637083;
-      --border: #e2e7ee;
-      --accent: #2f6fdb;
-      --now: #fff4d6;
+      --bg: #f4f6f9; --text: #1b2330; --muted: #637083; --accent: #2f6fdb;
+      --footer-bg: #1b2330; --footer-text: #e6ebf2; --footer-muted: #93a0b3;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #11151c;
-        --card: #1a2029;
-        --text: #e6ebf2;
-        --muted: #93a0b3;
-        --border: #2a323e;
-        --accent: #7aa7ff;
-        --now: #3a3320;
+        --bg: #11151c; --text: #e6ebf2; --muted: #93a0b3; --accent: #7aa7ff;
+        --footer-bg: #0b0e13; --footer-text: #e6ebf2; --footer-muted: #93a0b3;
       }
     }
     * { box-sizing: border-box; }
+    /* Snap between "scene" and "footer open" so the footer behaves like a drawer */
+    html { scroll-snap-type: y mandatory; }
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.4;
     }
-    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
-    header { margin-bottom: 24px; }
-    h1 { font-size: 1.5rem; margin: 0 0 4px; }
-    .datetime { color: var(--muted); font-size: 1rem; }
-    .hero {
-      display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px; margin-bottom: 20px;
+
+    /* Scene: exactly one full viewport */
+    .scene {
+      height: 100vh;
+      height: 100dvh;
+      scroll-snap-align: start;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 22vh 16px 24px; text-align: center;
+      /* Sketch fills the scene; anchored to the bottom so the skyline is never cropped */
+      /* --sky-top / --sky-horizon are set to a random blue by the script below */
+      background:
+        url("assets/skyline_rough_sketch.png") center bottom / cover no-repeat,
+        linear-gradient(to bottom, var(--sky-top, #4a90d9), var(--sky-horizon, #a9d2f5));
     }
-    .hero .temp { font-size: 3.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .hero .cond { font-size: 1.25rem; }
-    .hero .sub { color: var(--muted); width: 100%; }
-    h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-    .stat .label { color: var(--muted); font-size: 0.8rem; }
-    .stat .value { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .stat .note { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
-    .timeline { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-    .timeline .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 14px; border-top: 1px solid var(--border); }
-    .timeline .row:first-child { border-top: 0; }
-    .timeline .row .time { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
-    .timeline .row .what small { color: var(--muted); display: block; font-size: 0.75rem; }
-    .timeline .row.past { opacity: 0.5; }
-    .timeline .row.next { background: var(--now); }
-    footer { margin-top: 32px; color: var(--muted); font-size: 0.8rem; }
-    footer a { color: var(--accent); }
-    .error { color: #d14343; }
+    .time { font-size: clamp(3rem, 12vw, 7rem); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+    .date { font-size: clamp(1rem, 3vw, 1.5rem); color: var(--muted); margin-top: 12px; }
+
+    /* Footer drawer: 25% of the viewport, revealed by scrolling down */
+    .drawer {
+      height: 25vh;
+      height: 25dvh;
+      scroll-snap-align: end;
+      background: var(--footer-bg);
+      color: var(--footer-text);
+      display: flex; flex-direction: column; justify-content: center; gap: 8px;
+      padding: 16px clamp(16px, 5vw, 48px);
+      font-size: 0.9rem;
+    }
+    .drawer h2 { margin: 0; font-size: 1rem; }
+    .drawer p { margin: 0; color: var(--footer-muted); }
+    .drawer a { color: var(--footer-text); }
   </style>
+  <link rel="stylesheet" href="nav.css" />
 </head>
 <body>
-<main>
-  <header>
-    <h1>San Francisco, CA</h1>
-    <div class="datetime" id="clock">—</div>
-  </header>
+  <nav class="page-toggle">
+    <a href="index.html" aria-current="page">Dashboard</a>
+    <a href="stats.html">All stats</a>
+  </nav>
+  <main class="scene">
+    <div class="time" id="time">—</div>
+    <div class="date" id="date">—</div>
+  </main>
 
-  <section class="hero" id="hero"><span class="sub">Loading weather…</span></section>
-
-  <h2>Clouds</h2>
-  <div class="grid" id="clouds"></div>
-
-  <h2>Atmosphere</h2>
-  <div class="grid" id="atmo"></div>
-
-  <h2>Wind &amp; precipitation</h2>
-  <div class="grid" id="wind"></div>
-
-  <h2>Sun right now</h2>
-  <div class="grid" id="sunNow"></div>
-
-  <h2>Today's sun timeline</h2>
-  <div class="timeline" id="sunTimes"></div>
-
-  <h2>Moon</h2>
-  <div class="grid" id="moon"></div>
-
-  <footer>
-    <span id="updated"></span> · Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (refreshes every 15 min) ·
-    Sun &amp; moon: <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (updates every minute)
+  <footer class="drawer">
+    <p>Footer text</p>
   </footer>
-</main>
 
 <script>
-  const LAT = 37.7749, LON = -122.4194, TZ = "America/Los_Angeles";
+  const TZ = "America/Los_Angeles";
 
-  const CURRENT = [
-    "temperature_2m", "apparent_temperature", "relative_humidity_2m", "dew_point_2m",
-    "weather_code", "cloud_cover", "cloud_cover_low", "cloud_cover_mid", "cloud_cover_high",
-    "visibility", "precipitation", "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m",
-    "pressure_msl", "is_day", "uv_index", "shortwave_radiation"
-  ];
-  const DAILY = ["uv_index_max", "daylight_duration"];
-
-  const API = "https://api.open-meteo.com/v1/forecast?" + new URLSearchParams({
-    latitude: LAT, longitude: LON, timezone: TZ,
-    current: CURRENT.join(","), daily: DAILY.join(","),
-    temperature_unit: "fahrenheit", wind_speed_unit: "mph", precipitation_unit: "inch",
-    forecast_days: 1
-  });
-
-  // WMO weather interpretation codes
-  const WMO = {
-    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-    45: "Fog", 48: "Depositing rime fog",
-    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
-    56: "Light freezing drizzle", 57: "Dense freezing drizzle",
-    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-    66: "Light freezing rain", 67: "Heavy freezing rain",
-    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow", 77: "Snow grains",
-    80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
-    85: "Slight snow showers", 86: "Heavy snow showers",
-    95: "Thunderstorm", 96: "Thunderstorm, slight hail", 99: "Thunderstorm, heavy hail"
-  };
-
-  const DEG = 180 / Math.PI;
-  const compass = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d / 22.5) % 16];
-  const fmtClock = date => date && !isNaN(date) ? date.toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }) : "—";
-  const fmtIso = iso => fmtClock(new Date(iso + ":00"));
-  // SunCalc azimuth is radians from south, positive westward → convert to compass bearing from north
-  const bearing = az => (az * DEG + 180 + 360) % 360;
-
-  function stat(label, value, note = "") {
-    return `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div>${note ? `<div class="note">${note}</div>` : ""}</div>`;
-  }
-
-  function cloudNote(layer) {
-    return { low: "Below ~6,500 ft · fog, stratus", mid: "~6,500–20,000 ft · altocumulus", high: "Above ~20,000 ft · cirrus, colorful sunsets" }[layer];
-  }
-
-  function fogRisk(spread, rh) {
-    if (spread <= 2.5 && rh >= 95) return "High — fog likely";
-    if (spread <= 5) return "Moderate — haze or mist possible";
-    return "Low";
-  }
-
-  // ---------- Weather (Open-Meteo) ----------
-  function renderWeather(d) {
-    const c = d.current, day = d.daily;
-    const cond = WMO[c.weather_code] ?? `Code ${c.weather_code}`;
-    const visMi = c.visibility / 5280;
-    const spread = c.temperature_2m - c.dew_point_2m;
-
-    document.getElementById("hero").innerHTML = `
-      <span class="temp">${Math.round(c.temperature_2m)}°F</span>
-      <span class="cond">${cond}</span>
-      <span class="sub">Feels like ${Math.round(c.apparent_temperature)}°F · ${c.is_day ? "Daytime" : "Night"} · WMO code ${c.weather_code}</span>`;
-
-    document.getElementById("clouds").innerHTML =
-      stat("Total cloud cover", `${c.cloud_cover}%`) +
-      stat("Low clouds", `${c.cloud_cover_low}%`, cloudNote("low")) +
-      stat("Mid clouds", `${c.cloud_cover_mid}%`, cloudNote("mid")) +
-      stat("High clouds", `${c.cloud_cover_high}%`, cloudNote("high"));
-
-    document.getElementById("atmo").innerHTML =
-      stat("Relative humidity", `${c.relative_humidity_2m}%`) +
-      stat("Dew point", `${Math.round(c.dew_point_2m)}°F`, `Temp–dew point spread ${spread.toFixed(1)}°F`) +
-      stat("Fog risk", fogRisk(spread, c.relative_humidity_2m), "From the dew point spread & humidity") +
-      stat("Visibility", visMi >= 10 ? "10+ mi" : `${visMi.toFixed(1)} mi`, `${Math.round(c.visibility).toLocaleString()} ft`) +
-      stat("Pressure", `${c.pressure_msl.toFixed(0)} hPa`, `${(c.pressure_msl * 0.02953).toFixed(2)} inHg`);
-
-    document.getElementById("wind").innerHTML =
-      stat("Wind speed", `${c.wind_speed_10m.toFixed(0)} mph`) +
-      stat("Wind direction", `${compass(c.wind_direction_10m)} ${c.wind_direction_10m}°`, "Direction wind is coming from") +
-      stat("Wind gusts", `${c.wind_gusts_10m.toFixed(0)} mph`) +
-      stat("Precipitation", `${c.precipitation.toFixed(2)} in`, "Last 15 minutes");
-
-    weatherExtras = {
-      uv: c.uv_index, uvMax: day.uv_index_max[0],
-      radiation: c.shortwave_radiation, daylight: day.daylight_duration[0]
-    };
-    renderSky();
-
-    document.getElementById("updated").textContent = `Weather observed ${fmtIso(c.time)}`;
-  }
-
-  // ---------- Sun & moon (SunCalc) ----------
-  let weatherExtras = null;
-
-  function sunPhase(altDeg, now, t) {
-    if (altDeg >= 6) return "Daylight";
-    if (altDeg >= -0.833) return now < t.solarNoon ? "Golden hour (morning)" : "Golden hour (evening)";
-    if (altDeg >= -6) return "Civil twilight";
-    if (altDeg >= -12) return "Nautical twilight";
-    if (altDeg >= -18) return "Astronomical twilight";
-    return "Night";
-  }
-
-  function moonPhaseName(p) {
-    // p: 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter
-    const names = [
-      ["New moon", "🌑"], ["Waxing crescent", "🌒"], ["First quarter", "🌓"], ["Waxing gibbous", "🌔"],
-      ["Full moon", "🌕"], ["Waning gibbous", "🌖"], ["Last quarter", "🌗"], ["Waning crescent", "🌘"]
-    ];
-    return names[Math.round(p * 8) % 8];
-  }
-
-  function renderSky() {
-    const now = new Date();
-    const t = SunCalc.getTimes(now, LAT, LON);
-    const sun = SunCalc.getPosition(now, LAT, LON);
-    const sunAlt = sun.altitude * DEG, sunAz = bearing(sun.azimuth);
-    const noonAlt = SunCalc.getPosition(t.solarNoon, LAT, LON).altitude * DEG;
-
-    let sunNow =
-      stat("Sun altitude", `${sunAlt.toFixed(1)}°`, sunAlt > 0 ? "Above the horizon" : "Below the horizon") +
-      stat("Sun azimuth", `${compass(sunAz)} ${sunAz.toFixed(0)}°`, "Compass bearing from north") +
-      stat("Sky phase", sunPhase(sunAlt, now, t)) +
-      stat("Solar noon", fmtClock(t.solarNoon), `Peak altitude ${noonAlt.toFixed(1)}°`);
-    if (weatherExtras) {
-      const w = weatherExtras;
-      sunNow +=
-        stat("Daylight", `${Math.floor(w.daylight / 3600)}h ${Math.round(w.daylight % 3600 / 60)}m`) +
-        stat("UV index", w.uv.toFixed(1), `Today's max ${w.uvMax.toFixed(1)}`) +
-        stat("Solar radiation", `${Math.round(w.radiation)} W/m²`, "Sunlight reaching the ground");
-    }
-    document.getElementById("sunNow").innerHTML = sunNow;
-
-    const events = [
-      [t.nightEnd, "Astronomical dawn", "Sun 18° below horizon · first hint of light"],
-      [t.nauticalDawn, "Nautical dawn", "Sun 12° below · horizon becomes visible"],
-      [t.dawn, "Civil dawn", "Sun 6° below · blue hour begins"],
-      [t.sunrise, "Sunrise", "Top of the sun clears the horizon"],
-      [t.goldenHourEnd, "Morning golden hour ends", "Sun 6° above · light turns harsher"],
-      [t.solarNoon, "Solar noon", "Sun at its highest"],
-      [t.goldenHour, "Evening golden hour begins", "Sun 6° above · warm, soft light"],
-      [t.sunset, "Sunset", "Sun disappears below the horizon"],
-      [t.dusk, "Civil dusk", "Sun 6° below · blue hour ends"],
-      [t.nauticalDusk, "Nautical dusk", "Sun 12° below · horizon fades"],
-      [t.night, "Astronomical dusk", "Sun 18° below · fully dark sky"]
-    ].filter(e => e[0] && !isNaN(e[0])).sort((a, b) => a[0] - b[0]);
-    const nextIdx = events.findIndex(e => e[0] > now);
-    document.getElementById("sunTimes").innerHTML = events.map((e, i) => `
-      <div class="row ${i === nextIdx ? "next" : e[0] < now ? "past" : ""}">
-        <div class="what">${e[1]}${i === nextIdx ? " · next" : ""}<small>${e[2]}</small></div>
-        <div class="time">${fmtClock(e[0])}</div>
-      </div>`).join("");
-
-    const moon = SunCalc.getMoonPosition(now, LAT, LON);
-    const illum = SunCalc.getMoonIllumination(now);
-    const mt = SunCalc.getMoonTimes(now, LAT, LON);
-    const moonAlt = moon.altitude * DEG, moonAz = bearing(moon.azimuth);
-    const [phaseName, phaseIcon] = moonPhaseName(illum.phase);
-    const daysToFull = ((0.5 - illum.phase + 1) % 1) * 29.53;
-    document.getElementById("moon").innerHTML =
-      stat("Phase", `${phaseIcon} ${phaseName}`, `Cycle position ${(illum.phase * 100).toFixed(0)}% · full in ${daysToFull.toFixed(1)} days`) +
-      stat("Illumination", `${(illum.fraction * 100).toFixed(0)}%`, "Portion of the disc lit") +
-      stat("Moon altitude", `${moonAlt.toFixed(1)}°`, moonAlt > 0 ? "Above the horizon" : "Below the horizon") +
-      stat("Moon azimuth", `${compass(moonAz)} ${moonAz.toFixed(0)}°`, "Compass bearing from north") +
-      stat("Moonrise", mt.alwaysUp ? "Up all day" : mt.alwaysDown ? "Down all day" : fmtClock(mt.rise)) +
-      stat("Moonset", mt.alwaysUp ? "Up all day" : mt.alwaysDown ? "Down all day" : fmtClock(mt.set)) +
-      stat("Distance", `${Math.round(moon.distance * 0.621371).toLocaleString()} mi`, `${Math.round(moon.distance).toLocaleString()} km`);
-  }
-
-  async function loadWeather() {
-    try {
-      const res = await fetch(API);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      renderWeather(await res.json());
-    } catch (e) {
-      document.getElementById("hero").innerHTML = `<span class="sub error">Couldn't load weather: ${e.message}</span>`;
-    }
-  }
-
+  // Placeholder sky: a random blue each load (to be replaced by the sun-driven gradient, PRD S1)
+  const hue = 195 + Math.random() * 20;      // 195–215: cyan-blue to true blue
+  const sat = 55 + Math.random() * 25;       // 55–80%
+  const light = 65 + Math.random() * 10;     // 65–75%
+  const sky = document.documentElement.style;
+  sky.setProperty("--sky-top", `hsl(${hue} ${sat}% ${light}%)`);
+  sky.setProperty("--sky-horizon", `hsl(${hue} ${sat - 10}% ${Math.min(light + 18, 92)}%)`);
   function tick() {
-    document.getElementById("clock").textContent = new Date().toLocaleString("en-US", {
-      timeZone: TZ, weekday: "long", month: "long", day: "numeric", year: "numeric",
-      hour: "numeric", minute: "2-digit", second: "2-digit", timeZoneName: "short"
-    });
+    const now = new Date();
+    document.getElementById("time").textContent =
+      now.toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
+    document.getElementById("date").textContent =
+      now.toLocaleDateString("en-US", { timeZone: TZ, weekday: "long", month: "long", day: "numeric", year: "numeric" });
   }
-
   tick();
   setInterval(tick, 1000);
-  renderSky();
-  setInterval(renderSky, 60 * 1000);
-  loadWeather();
-  setInterval(loadWeather, 15 * 60 * 1000);
 </script>
 </body>
 </html>
